@@ -7,13 +7,13 @@ In-memory watchlist checker is a simple component that checks if a given entity 
 Loading the list:
 <p align="center">
     <img src="docs/load.png"/>
-p>
+<p/>
 
 Using the list:
 
 <p align="center">
     <img src="docs/check.png"/>
-p>
+<p/>
 
 
 ## Watchlist sources
@@ -30,6 +30,6 @@ URL: 🔗 https://www.trade.gov/consolidated-screening-list
 such as intellij one 
 <p align="center">
     <img src="docs/intellij-profiler.png"/>
-p>
+<p>
 
 

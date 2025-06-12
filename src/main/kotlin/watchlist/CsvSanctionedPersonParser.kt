@@ -17,7 +17,7 @@ class CsvSanctionedPersonParser(
 
     fun parse(): Sequence<SanctionedPerson> {
         val resource = javaClass.getResourceAsStream(resourcePath)
-            ?: error("CSV file not found: $resourcePath")
+            ?: error("CSV files not found why though: $resourcePath")
 
         val reader = InputStreamReader(resource)
 
@@ -39,6 +39,4 @@ class CsvSanctionedPersonParser(
             }
     }
 
-
-//    private fun getColumnValue(row: List<String>, column: Int) = row.getOrNull(column)?.trim()?.removeSurrounding("\"") ?: ""
 }

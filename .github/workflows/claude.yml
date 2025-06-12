@@ -1,0 +1,141 @@
+name: Claude PR Assistant (Bedrock)
+
+on:
+  # Manual “@claude …” triggers
+  issue_comment:            { types: [created] }
+  pull_request_review_comment:
+    { types: [created] }
+  pull_request_review:      { types: [submitted] }
+  issues:                   { types: [opened, assigned] }
+
+  # Automatic review on every PR push / creation
+  pull_request:             { types: [opened, synchronize] }
+
+############################
+# 1. MANUAL “@claude …” JOB #
+############################
+jobs:
+  claude-manual:
+    if: |
+      (github.event_name == 'issue_comment' &&
+       contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review_comment' &&
+       contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review' &&
+       contains(github.event.review.body, '@claude')) ||
+      (github.event_name == 'issues' &&
+       contains(github.event.issue.body, '@claude'))
+
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: read
+
+    env:
+      AWS_ACCESS_KEY_ID:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_REGION:            eu-central-1       # Bedrock region
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Run Claude (manual trigger) via Bedrock
+        uses: anthropics/claude-code-action@beta
+        with:
+          use_bedrock: "true"
+          model: "arn:aws:bedrock:eu-central-1:538639307912:application-inference-profile/bsfdqs400k7z"
+          timeout_minutes: "60"
+          trigger_phrase: "@claude"        # only reply when explicitly tagged
+
+  ##########################
+  # 2. AUTOMATIC PR REVIEW #
+  ##########################
+  claude-auto-review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+
+    env:
+      AWS_ACCESS_KEY_ID:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_REGION:            eu-central-1
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Claude Automatic PR Review via Bedrock
+        uses: anthropics/claude-code-action@beta
+        with:
+          use_bedrock: "true"
+          model: "arn:aws:bedrock:eu-central-1:538639307912:application-inference-profile/bsfdqs400k7z"
+          timeout_minutes: "60"
+
+          # ===== Project-specific structured review prompt =====
+          direct_prompt: |
+            You are the automated code-review assistant for this repository, a Kotlin-based backend/API project (Kotlin API v2.1).  
+            Provide a thorough, structured review using the following template.
+
+            ---
+            ## 1. Summary
+            • Briefly describe the intent of the PR and its architectural impact.  
+            • Note any new modules, services, or significant refactors.
+
+            ## 2. Architectural & Design Considerations
+            • Alignment with existing hexagonal / layered architecture.  
+            • Separation of concerns (domain, application, infrastructure).  
+            • Dependency-injection usage (e.g., Koin/Hilt/Spring).  
+            • Thread-safety and coroutine context handling.
+
+            ## 3. API & Contracts
+            • Breaking-change risk to public endpoints or library consumers.  
+            • Compliance with versioning and API guidelines (OpenAPI annotations, HTTP codes, error envelopes).  
+            • Serialization formats (Jackson/Kotlinx) and schema evolution.
+
+            ## 4. Kotlin Code Quality
+            • Idiomatic Kotlin, use of extension functions, null-safety, sealed classes, and data classes.  
+            • Consistency with the project’s code-style rules (ktlint / detekt).  
+            • Proper use of suspend functions and structured concurrency.  
+            • Exhaustive `when` statements and smart-casts.
+
+            ## 5. Testing & Reliability
+            • Unit and integration test coverage (JUnit5, Kotest, Testcontainers).  
+            • Deterministic tests and use of fixtures / mocks.  
+            • CI pipeline impact (runtime, flakiness, required secrets).  
+            • Observability (logs, metrics, tracing) additions.
+
+            ## 6. Security & Compliance
+            • Input validation / sanitization (SQL/NoSQL injections, XSS).  
+            • Secrets management and environment variable usage.  
+            • OAuth / JWT / session handling where applicable.  
+            • Dependencies audited for CVEs (Gradle-Vulnerability plugin).
+
+            ## 7. Performance & Scalability
+            • Algorithmic complexity, memory allocation hotspots.  
+            • Database query efficiency and indexing.  
+            • Caching layer adjustments.  
+            • Coroutine dispatchers and non-blocking IO correctness.
+
+            ## 8. Documentation
+            • KDoc completeness and accuracy.  
+            • Updates to README, ADRs, or diagrams.  
+            • OpenAPI / Swagger changes committed.
+
+            ## 9. Suggested Improvements
+            • List concrete actionable items with severity tags (🔴 Critical, 🟠 Major, 🟢 Minor).  
+            • Include code snippets or file paths for clarity.
+
+            ## 10. Verdict
+            • Short statement: `APPROVE`, `REQUEST_CHANGES`, or `COMMENT_ONLY`.  
+            • Rationale in 1-2 sentences.
+
+            ---
+            Please keep the tone constructive and concise. Output in Markdown.

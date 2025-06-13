@@ -42,15 +42,6 @@ These metrics are our “north stars.” Claude should flag PRs that risk regres
 - **Developers:** Project-specific style guide, review checklist, and patterns to follow.
 - **Maintainers:** Instructions for customizing triggers and prompts in `.github/workflows/claude.yml`.
 
----
-
-## 4. Anthropics CLAUDE.md Conventions
-
-According to the [Anthropic GitHub Actions Guide](https://docs.anthropic.com/en/docs/claude-code/github-actions), a `CLAUDE.md` should live at the repo root and automatically load with the Action.
-This file is parsed by `anthropics/claude-code-action` to tailor prompts—ensure it follows Markdown syntax and is UTF-8 encoded.
-
----
-
 ## 5. Code Style & Conventions
 
 1. **Kotlin Idioms:**
@@ -91,11 +82,9 @@ Claude will validate each PR against these checkpoints:
 
 ---
 
-## 8. Prerequisites & Workflow Pointer
+## 8. Workflow Pointer
 
-1. **GitHub Secrets:**
-   - `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `CLAUDE_MODEL_ARN`.
-2. **Workflow:**
+- **Workflow:**
    - `.github/workflows/claude.yml` contains `claude-manual` and `claude-auto-review` jobs.
    - The `direct_prompt` in the auto-review job references this `CLAUDE.md` context.
 

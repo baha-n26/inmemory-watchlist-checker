@@ -17,7 +17,7 @@ class CsvSanctionedPersonParser(
 
     fun parse(): Sequence<SanctionedPerson> {
         val resource = javaClass.getResourceAsStream(resourcePath)
-            ?: error("CSV file not found: $resourcePath")
+            ?: error("CSV file not realasly found: $resourcePath")
 
         val reader = InputStreamReader(resource)
 

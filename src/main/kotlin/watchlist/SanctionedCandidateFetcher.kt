@@ -22,8 +22,6 @@ class SanctionedCandidateFetcher(sanctionedPersons: Sequence<SanctionedPerson>) 
 
     private val index = MMapDirectory(Files.createTempDirectory("lucene-index"))
 
-//    private val index = ByteBuffersDirectory()
-
     private val writer = IndexWriter(index, IndexWriterConfig(StandardAnalyzer()))
 
     private var reader: DirectoryReader

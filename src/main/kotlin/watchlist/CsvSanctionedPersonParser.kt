@@ -38,7 +38,4 @@ class CsvSanctionedPersonParser(
                 SanctionedPerson(fullName, aliases)
             }
     }
-
-
-//    private fun getColumnValue(row: List<String>, column: Int) = row.getOrNull(column)?.trim()?.removeSurrounding("\"") ?: ""
 }

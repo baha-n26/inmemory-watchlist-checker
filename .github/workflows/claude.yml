@@ -30,6 +30,7 @@ jobs:
       contents: read
       pull-requests: read
       issues: read
+      id-token: write
 
     steps:
       - name: Checkout repository
@@ -42,17 +43,18 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           timeout_minutes: "60"
-          trigger_phrase: "@claude"   # only reply when explicitly tagged
+          trigger_phrase: "@claude"
 
-  ##########################
-  # 2. AUTOMATIC PR REVIEW #
-  ##########################
+##########################
+# 2. AUTOMATIC PR REVIEW #
+##########################
   claude-auto-review:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       contents: read
       pull-requests: read
+      id-token: write
 
     steps:
       - name: Checkout repository

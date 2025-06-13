@@ -54,8 +54,7 @@ jobs:
         uses: anthropics/claude-code-action@beta
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          temperature: 0.2
-          prompt: |
+          direct_prompt: |
             SYSTEM:
             You are an expert release manager. Produce a concise,
             well-structured pull-request summary that includes:

@@ -1,0 +1,105 @@
+name: Claude – Auto PR Summary
+on:
+  pull_request:                       # fires on open, reopen, or new commits
+    types: [opened, synchronize, reopened]
+
+permissions:                          # strictly the minimum we need
+  pull-requests: write                # update PR body / add comment
+  contents: read
+
+jobs:
+  claude-pr-summary:
+    runs-on: ubuntu-latest
+    steps:
+
+      # ──────────────────────────────────────────────────────────────────
+      # 1. Gather commit HISTORY for this PR (last 250 commits max)      │
+      # ──────────────────────────────────────────────────────────────────
+      - name: Collect commit messages
+        id: commits
+        uses: actions/github-script@v7
+        with:
+          result-encoding: string
+          script: |
+            const pr = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number
+            });
+
+            // Concatenate the most recent 250 commit messages
+            const commits = await github.paginate(
+              github.rest.pulls.listCommits,
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: pr.data.number,
+                per_page: 100
+              }
+            );
+
+            const commitMessages = commits
+              .slice(0, 250)
+              .map(c => `• ${c.commit.message.split('\n')[0]}`) // first line only
+              .join('\n');
+
+            return commitMessages;
+
+      # ──────────────────────────────────────────────────────────────────
+      # 2. Ask Claude to SUMMARISE those commits into a PR description   │
+      # ──────────────────────────────────────────────────────────────────
+      - name: Claude – Create summary draft
+        id: claude
+        uses: anthropic/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          model: claude-3-opus-20240229     # pick any supported model
+          max_tokens_to_sample: 512
+          temperature: 0.2
+          prompt: |
+            SYSTEM:
+            You are an expert release manager. Produce a concise,
+            well-structured pull-request summary that includes:
+            1. **Summary** – one-sentence purpose
+            2. **Motivation**
+            3. **Changes** – bullet list
+            4. **Usage / Migration notes** if any
+            5. **Test plan**
+            6. Footer: "🤖 Generated with Claude Code"
+
+            USER CONTEXT:
+            Repository: ${{ github.repository }}
+            PR-Branch:  ${{ github.head_ref }}
+            Target:     ${{ github.base_ref }}
+
+            Commits to summarise:
+            ```
+            ${{ steps.commits.outputs.result }}
+            ```
+
+      # ──────────────────────────────────────────────────────────────────
+      # 3. Update the PR body *or* leave a comment with the summary      │
+      # ──────────────────────────────────────────────────────────────────
+      # Option A – overwrite / create the pull-request body
+      - name: Update PR body with summary
+        if: success() && steps.claude.outputs.completion != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = `### Claude PR Summary\n\n${{ steps.claude.outputs.completion }}`;
+            await github.rest.pulls.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number,
+              body
+            });
+
+      # Option B – instead of editing the body, create or update a comment
+      # - name: Upsert comment
+      #   uses: peter-evans/create-or-update-comment@v4
+      #   with:
+      #     issue-number: ${{ github.event.pull_request.number }}
+      #     body: |
+      #       ### Claude PR Summary
+      #
+      #       ${{ steps.claude.outputs.completion }}

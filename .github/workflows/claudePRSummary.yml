@@ -5,7 +5,8 @@ on:
 
 permissions:                          # strictly the minimum we need
   pull-requests: write                # update PR body / add comment
-  contents: read
+  contents: write
+  id-token: write
 
 jobs:
   claude-pr-summary:

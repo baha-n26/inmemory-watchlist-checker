@@ -110,14 +110,35 @@ direct_prompt: |
   ## 6. Testing & Reliability
   • Confirm CSV parsing tests cover large-file streaming without OOM.
   • Ensure integration tests include search under simulated load (e.g., using Gatling).
+  • Validate JaCoCo / Kover coverage report: project-wide ≥ 90 % and new/modified files ≥ 85 %; flag any regressions.  
+  • Require tests for all new public methods & critical paths; disallow unexplained @Disabled tests. 
 
   ## 7. Observability & Monitoring
   • Ensure metrics (search latency, index size) are emitted via Micrometer timers/gauges.
   • Logs for parse errors and search timeouts are present.
 
   ## 8. Security & Data Handling
-  • Validate input sanitization to avoid injection in Lucene queries.
-  • Ensure no raw CSV path exposure; secrets/config in `application.yml`.
+  • Validate and sanitize all untrusted input to prevent Lucene query / path-traversal injection.  
+  • Ensure new code respects existing auth / access-control boundaries; no privilege escalation.  
+  • Keep secrets, keys, and connection strings in GitHub or vault-managed secrets – never in code or logs.  
+  • Verify third-party dependencies are up-to-date and free of known CVEs (automated scan acceptable).
+  
+    **Security Standards:**
+    - OWASP Top 10 (2021): A01-A10 web application security
+    - OWASP Top 10 LLM (2023/2025): AI-specific security risks
+    - Company security guidelines: [CUSTOMIZE_WITH_YOUR_POLICIES]
+    
+    **Critical Analysis Areas:**
+    1. Input Validation & Injection Prevention
+    2. Authentication & Authorization
+    3. Cryptographic Implementation
+    4. Error Handling & Information Disclosure
+    5. Security Configuration & Defaults
+    6. Dependency & Component Security
+    7. Sensitive Data Protection
+    8. Design Security Flaws
+    
+    **Output Format:** Structured JSON with vulnerability details, OWASP categories, severity ratings, and remediation steps.
 
   ## 9. Documentation & ADRs
   • Update README with CSV source, index build steps, and benchmark instructions.

@@ -42,6 +42,7 @@ jobs:
         uses: anthropics/claude-code-action@beta
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          model: claude-opus-4-20250514
           timeout_minutes: "60"
           trigger_phrase: "@claude"
 
@@ -66,6 +67,7 @@ jobs:
         uses: anthropics/claude-code-action@beta
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          model: claude-opus-4-20250514
           timeout_minutes: "60"
 
           # ===== Project-specific structured review prompt =====

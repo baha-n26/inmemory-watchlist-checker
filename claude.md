@@ -1,61 +1,102 @@
-# Claude PR Assistant
+# CLAUDE PR Assistant
 
-This repository integrates the Anthropics Claude model (via AWS Bedrock) to provide both manual and automatic code-review assistance on pull requests and issues.
-
----
-
-## 1. Overview
-
-The **Claude PR Assistant** GitHub Action will:
-
-- **Automatically review** every pull request on open and on update, posting structured feedback directly as a PR review comment.
-- **Respond to manual triggers** when you tag a comment or issue with `@claude`, running Claude on-demand for deeper insight or one-off analysis.
-
-Under the hood, we leverage the [`anthropics/claude-code-action@beta`](https://github.com/anthropics/claude-code-action) runner with AWS Bedrock. We supply our Bedrock model ARN and AWS credentials as GitHub Secrets.
+This `CLAUDE.md` file defines the code-review standards, project rules, and metrics that guide **Claude** when evaluating pull requests for our **Kotlin API v2.1** service.
 
 ---
 
-## 2. Prerequisites
+## 1. High-Level Project Summary
 
-Before enabling the workflow, confirm:
+**Purpose:**  
+A backend service that:
+- **Ingests** a 1 GB+ CSV of millions of sanctioned/blacklisted person records via streaming to avoid Out of Memory Exceptions.
+- **Builds** and maintains in-memory Lucene indexes for sub-500 ms lookups.
+- **Provides** a Service (`SanctionedCandidateFetcher`) supporting name, DOB, and source filters for lookups against lucene Indexes.
+- **Scores** Lucene returned hits via Jaro-Winkler similarity, filtering for hits only above the configured threshold.
 
-1. **AWS Bedrock Access**: Your AWS account must have an active Bedrock endpoint with a Claude-compatible inference profile.
-2. **GitHub Secrets**: In your repository’s **Settings → Secrets**, define:
-    - `AWS_ACCESS_KEY_ID`
-    - `AWS_SECRET_ACCESS_KEY`
-    - `AWS_REGION` (e.g. `eu-central-1`)
-    - We are currently using static AWS credentials for Bedrock.
+**Core Functionality:**
+- `src/main/kotlin/watchlist/CsvSanctionedPersonParser.kt` (Parsing the CSV file)
+- `src/main/kotlin/watchlist/SanctionedCandidateFetcher.kt` (Searching against Lucene indexes)
+- `src/main/kotlin/watchlist/SanctionedPersonChecker.kt` (Service integrating Lucene Search and Jaro Winkler Similarity Scoring to check if a person is sanctioned)
+- `src/main/kotlin/watchlist/SimilarityScorer.kt` (Calculating Jaro-Winkler similarity scores)
+- `src/jmh/kotlin/benchmark/` (JMH tests for performance benchmarks)
 
 ---
 
-## 3. Workflow Configuration
+## 2. North-Star Metrics & Goals
 
-The workflow configuration lives in **`.github/workflows/claude.yml`**, and defines two jobs:
+| Metric                | Target                                  |
+|-----------------------|-----------------------------------------|
+| Search Latency        | p99 < 500 ms under 200 req/sec          |
+| Memory Footprint      | Within configured JVM heap (max 2.4 GB) |
+| Match Accuracy        | ≤ 1% false positives via similarity     |
+| Test Coverage         | ≥ 90% on parser/index/similarity        |
+| Benchmark Consistency | No regressions in `benchmark/` suite    |
 
-- **Manual Trigger (`claude-manual`)**: Responds whenever a comment or review contains `@claude`.
-- **Automatic Review (`claude-auto-review`)**: Runs on every pull-request open or update.
+These metrics are our “north stars.” Claude should flag PRs that risk regressions in any of these areas.
 
-To customize behavior, edit the inputs for each job in that file:
+---
 
-- **`trigger_phrase`**, **`timeout_minutes`**, or **`model`** under `claude-manual`.
-- **`direct_prompt`** under `claude-auto-review`, which controls how Claude structures its feedback.
+## 3. Audience & Usage
 
-For the full YAML and any additional settings, see the actual workflow file in **`.github/workflows/claude.yml`**.
+- **Product Managers:** High-level service overview, success criteria, and how PR reviews enforce them.
+- **Developers:** Project-specific style guide, review checklist, and patterns to follow.
+- **Maintainers:** Instructions for customizing triggers and prompts in `.github/workflows/claude.yml`.
 
-### Example: Tailoring the `direct_prompt`
+---
 
-```yaml
-direct_prompt: |
-  # Automated Code Review for Kotlin API v2.1
+## 4. Anthropics CLAUDE.md Conventions
 
-  ## 1. PR Intent & Scope
-  • Describe the purpose of this PR and any new modules or refactors.
+According to the [Anthropic GitHub Actions Guide](https://docs.anthropic.com/en/docs/claude-code/github-actions), a `CLAUDE.md` should live at the repo root and automatically load with the Action.
+This file is parsed by `anthropics/claude-code-action` to tailor prompts—ensure it follows Markdown syntax and is UTF-8 encoded.
 
-  ## 2. Architecture & DI
-  • Verify alignment with our hexagonal / layered architecture.
-  • Ensure dependency injection (Koin) is used correctly.
+---
 
-  ## 3. Endpoints & Contracts
-  • Identify any breaking changes to public REST endpoints.
-  • Check OpenAPI annotations and HTTP status codes.
-```
+## 5. Code Style & Conventions
+
+1. **Kotlin Idioms:**
+   - Use extension functions, data classes, sealed classes, null-safe operators.
+2. **Formatting & Linting:**
+   - Comply with `ktlint` and `detekt`; zero violations on `gradle ktlintCheck`.
+3. **Concurrency:**
+   - Avoid `runBlocking`; use structured concurrency (`Dispatchers.IO`, coroutines).
+
+---
+
+## 6. Review Criteria
+
+Claude will validate each PR against these checkpoints:
+
+1. **Architecture & Layering**
+   - Clear separation of core functionality logic (parsing, indexing, searching, scoring).
+2. **Performance & Scalability**
+   - Benchmarks meet p95 latency and memory targets.
+3. **Similarity & Accuracy**
+   - Jaro-Winkler threshold values correct; edge-case tests present.
+4. **Testing & Reliability**
+   - Parser/index tests stream large files; integration tests simulate load.
+5. **Observability & Monitoring**
+   - Micrometer metrics for latency and index size; logs via `LoggingInterceptor`.
+6. **Security & Data Handling**
+   - Sanitize inputs to prevent Lucene query injection; secure config management.
+7. **Documentation**
+   - APIs and core functionality are documented; updates to `README.md` and `docs/adr/`.
+
+---
+
+## 7. Project-Specific Rules & Patterns
+
+- **Lucene:** Use a single `Directory` instance; always close `IndexWriter`.
+- **Benchmarks:** New code paths require corresponding testing and/or benchmarks.
+- **Similarity Tests:** Cover diacritics, punctuation, casing.
+
+---
+
+## 8. Prerequisites & Workflow Pointer
+
+1. **GitHub Secrets:**
+   - `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `CLAUDE_MODEL_ARN`.
+2. **Workflow:**
+   - `.github/workflows/claude.yml` contains `claude-manual` and `claude-auto-review` jobs.
+   - The `direct_prompt` in the auto-review job references this `CLAUDE.md` context.
+
+For full configuration details, review both this file and the [Anthropic Docs on GitHub Actions](https://docs.anthropic.com/en/docs/claude-code/github-actions).
